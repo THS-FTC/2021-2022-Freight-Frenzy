@@ -8,27 +8,30 @@ import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.imgproc.Moments;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.openftc.easyopencv.OpenCvPipeline;
 import org.openftc.easyopencv.OpenCvWebcam;
 
+
 import org.opencv.core.Core;
 
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.Rect;
 
 
 import java.util.ArrayList;
 import java.util.List;
+
+
 
 @TeleOp
 public class WebcamExample extends LinearOpMode
 {
     OpenCvWebcam webcam;
 
+    double minContourArea = 1500.0;
     @Override
     public void runOpMode()
     {
@@ -191,6 +194,16 @@ public class WebcamExample extends LinearOpMode
              * @param width The width of the image (check your camera)
              */
             int width = 640;
+
+            Point textAnchor;
+            Scalar green = new Scalar(0,255,0,255);
+
+            @Override
+            public void init(Mat mat)
+            {
+                textAnchor = new Point(20, 400);
+            }
+
             @Override
             public Mat processFrame(Mat input) {
                 // "Mat" stands for matrix, which is basically the image that the detector will process
@@ -204,8 +217,8 @@ public class WebcamExample extends LinearOpMode
                 // Make a working copy of the input matrix in HSV
                 Mat mat = new Mat();
                 Imgproc.cvtColor(input, mat, Imgproc.COLOR_RGB2HSV);
-                Scalar lowHSV = new Scalar(0, 0, 0); // lower bound HSV for yellow
-                Scalar highHSV = new Scalar(10, 255, 255); // higher bound HSV for yellow
+                Scalar lowHSV = new Scalar(0, 0, 0); // lower bound HSV for red
+                Scalar highHSV = new Scalar(15, 255, 255); // higher bound HSV for red
                 Mat thresh = new Mat();
 
                 // We'll get a black and white image. The white regions represent the regular stones.
@@ -222,22 +235,44 @@ public class WebcamExample extends LinearOpMode
                 Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
                 //telemetry.addData("contours", contours);
                 //telemetry.update();
-                double largestContourArea = 0.0;
-                int largestContour = 0;
+                int largestContourArea = 0;
+                int largestContour = 0;//largestContour is the INDEX. use contours.get(largestContour) to get the contour
                 for (int i=0; i<contours.size(); i++){
-                    if (Imgproc.contourArea(contours.get(i)) > largestContourArea){
-                        largestContourArea = Imgproc.contourArea(contours.get(i));
+                    if (Imgproc.contourArea(contours.get(i)) > largestContourArea && Imgproc.contourArea(contours.get(i)) > minContourArea){
+                        largestContourArea = (int) Imgproc.contourArea(contours.get(i));
                         largestContour = i;
                     }
                 }
-                Imgproc.drawContours(input, contours, largestContour, new Scalar(0, 0, 255), 5);
-                //Mat finish = new Mat();
+                if(Imgproc.contourArea(contours.get(largestContour)) > minContourArea) {//check if the largest contour is bigger than the minimum value, so we don't find dumb contours
+                    //use the largest contour's moments to find the contour center
+                    Moments moments = new Moments();
+                    moments = (Imgproc.moments(contours.get(largestContour)));
+                    int centerRow;
+                    centerRow = (int) Math.round((double) (moments.get_m01() / moments.get_m00()));
 
+                    int centerColumn;
+                    centerColumn = (int) Math.round((double) (moments.get_m10() / moments.get_m00()));
+
+                    Imgproc.drawContours(input, contours, largestContour, new Scalar(0, 0, 255), 5);//draw the contour in the opposite color (blue cone --> red, red cone --> blue)
+                    Imgproc.putText(input, String.format("Camera: forward cam. Area: %d", largestContourArea), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is and the contour area
+                    //Mat finish = new Mat();
+                    //telemetry.addData("center row: ", centerRow);
+                    //telemetry.addData("center Column: ", centerColumn);
+                    //telemetry.update();
+                    Imgproc.circle(input, new Point(centerColumn, centerRow), 10, new Scalar(255, 255, 0), -1);//draw yellow dot at contour center
+                }
+                else{
+                    Imgproc.putText(input, String.format("Camera: forward cam."), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is if there is no contour
+                }
                 //Imgproc.cvtColor(mat, finish, Imgproc.COLOR_HSV2RGB);
                 thresh.release();
                 hierarchy.release();
                 mat.release();
                 //Imgproc.cvtColor(mat, mat, Imgproc.COLOR_HSV2RGB);
+
+
+
+
                 return input;
 
             }

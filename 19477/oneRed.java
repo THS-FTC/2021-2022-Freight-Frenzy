@@ -56,18 +56,12 @@ import java.util.Date;
 @TeleOp
 
 public class oneRed extends LinearOpMode {
-    //changeable variables
-    double carousel_speed = 1.0;
-    double high_pos = 110.0;
-    double mid_pos = 85.0;
-    double low_mid = 65.0;
-    double down = 0.0;
     //junction height values represented as motor encoder values for 4-stage Viper Slide Kit
     int groundJunction = 600;
     int lowJunction = 2900;
     int midJunction = 5400;
     int highJunction = 5400;
-    double slideSpeed = 3000.0;
+    double slideSpeed = 2250.0;//2787 PPR is max encoder PPR of Gobilda 435 rpm motor
     int armTarget = 0;//as encoder values
     int slidePosition = 0;
     boolean calibrated = false;
@@ -79,9 +73,8 @@ public class oneRed extends LinearOpMode {
     private DcMotorEx Motor_4;//back right
     private DcMotorEx armMotor;
     private Gyroscope imu;
-    private Servo clawServo;
+    private Servo intakeServo;
     //motor variables for mecanum drive
-    double armSpeed = 4000.0;
     double motor_reduction = 0.4;//for drivetrain
     double motor_1_pwr = 0.0;
     double motor_2_pwr = 0.0;
@@ -92,13 +85,13 @@ public class oneRed extends LinearOpMode {
     double left_stick2_x;//triggers and bumpers
     double left_stick2_y;
     double right_stick2_x;
-    double left_stick1_y;
+    /*double left_stick1_y;
     boolean left_bump1;
     boolean right_bump1;
     boolean left_bump2;
     boolean right_bump2;
     double left_trig1;
-    double right_trig1;
+    double right_trig1;*/
     double left_trig2;
     double right_trig2;
     boolean a1;//a,b,x,y buttons
@@ -108,11 +101,11 @@ public class oneRed extends LinearOpMode {
     boolean a2;
     boolean b2;
     boolean x2;
-    boolean y2;
-    boolean dpad_left;
-    boolean dpad_down;
-    boolean dpad_up;
-    boolean dpad_right;
+    //boolean y2;
+    //boolean dpad_left;
+    //boolean dpad_down;
+    //boolean dpad_up;
+    //boolean dpad_right;
 
     @Override
     public void runOpMode() {
@@ -123,7 +116,7 @@ public class oneRed extends LinearOpMode {
         Motor_3 = hardwareMap.get(DcMotorEx.class, "Motor_3");
         Motor_4 = hardwareMap.get(DcMotorEx.class, "Motor_4");
         armMotor = hardwareMap.get(DcMotorEx.class, "armMotor");
-        clawServo = hardwareMap.get(Servo.class, "clawServo");//to move the claw, grab the cone.
+        intakeServo = hardwareMap.get(Servo.class, "intakeServo");//to move the claw, grab the cone.
         //other things
         Motor_1.setDirection(DcMotorEx.Direction.REVERSE);
         Motor_3.setDirection(DcMotorEx.Direction.REVERSE);
@@ -136,24 +129,27 @@ public class oneRed extends LinearOpMode {
         Motor_4.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);*/
         //imu = hardwareMap.get(Gyroscope.class, "imu");
         telemetry.addData("Status", "Initialized");
-        telemetry.update();
-        while (calibrated == false){//calibrate slide motor to encoder val = 0
-            slideCalibrate();
-        }
-        sleep(1500);
+        //while (calibrated == false){//calibrate slide motor to encoder val = 0
+        //    slideCalibrate();
+        //}
+        //sleep(1500);
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);//reset encoder of slideMotor when slide is fully retracted
+        sleep(50);
+        armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         telemetry.addData("armEncoder", armMotor.getCurrentPosition());
+        telemetry.addData("intake servo", intakeServo.getPosition());
         telemetry.update();
         armMotor.setTargetPosition(0);
         armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        armMotor.setVelocity(armSpeed);
+        armMotor.setVelocity(slideSpeed);
+        //intakeServo.setPosition(20.0/270.0);//"zero" the intake servo
         waitForStart();
 
         //main loop
         while (opModeIsActive()) {
             normal_motor();
-            claw();
-            team_2_arm();
+            intake();
+            slide();
             //telemetry.addData("motor1", left_stick2_y);
             telemetry.update();
         }
@@ -205,35 +201,43 @@ public class oneRed extends LinearOpMode {
         }
     }
 
-    void claw(){
-        a2 = this.gamepad2.a;
-        x2 = this.gamepad2.x;
-        if (a2 == true){
-            clawServo.setPosition(30.0/270.0);//position for OPEN CLAW
-
-        }
-        else if (x2 == true){
-            clawServo.setPosition(100.0/270.0);//position for CLOSED CLAW
-        }
-    }
-
-    void team_2_arm(){//team 2 arm design with claw and 2 servos
+    void slide(){//team 2 arm design with claw and 2 servos
         left_trig2 = this.gamepad2.left_trigger;
         right_trig2 = this.gamepad2.right_trigger;
         telemetry.addData("righttrig", right_trig2);
         if(left_trig2 > 0.0 && armTarget > 0){
             armTarget -= 20;
-            armMotor.setTargetPosition(armTarget);
+            //armMotor.setTargetPosition(armTarget);
         }
-        if(right_trig2 > 0.0 && armTarget <= 3000){
+        else if(right_trig2 > 0.0 && armTarget <= 2900){
             armTarget += 20;
-            armMotor.setTargetPosition(armTarget);
+            //armMotor.setTargetPosition(armTarget);
             telemetry.addData("targetpos", armMotor.getTargetPosition());
         }
-        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        armMotor.setVelocity(armSpeed);
-        telemetry.addData("armPos: ", armTarget);
+        /*if (armMotor.getCurrentPosition() > armTarget){
+            armMotor.setPower(0.1);
+        }
+        else{*/
+            armMotor.setTargetPosition(armTarget);
+            armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            armMotor.setVelocity(slideSpeed);
+        //}
+        telemetry.addData("armTarget: ", armTarget);
+        telemetry.addData("armPos: ", armMotor.getCurrentPosition());
         //telemetry.update();
+    }
+
+    void intake(){
+        x2 = this.gamepad2.x;
+        b2 = this.gamepad2.b;
+
+        if (b2 && armMotor.getCurrentPosition() >= 675){//675 is predetermined as the height to clear the motors
+            intakeServo.setPosition(200.0/270.0);
+        }
+        if (x2 && armMotor.getCurrentPosition() >= 675){//675 is predetermined as the height to clear the motors
+            intakeServo.setPosition(20.0/270.0);
+        }
+        telemetry.addData("intakeServoPos: ", intakeServo.getPosition());
     }
 }
 
