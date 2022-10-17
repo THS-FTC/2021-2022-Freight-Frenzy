@@ -1,3 +1,4 @@
+//import FTC packages and all needed libraries
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -26,12 +27,13 @@ import java.util.List;
 
 
 
-@TeleOp
+@TeleOp//set mode to TeleOp (driver control)
 public class WebcamExample extends LinearOpMode
 {
+    //hardware definitions
     OpenCvWebcam webcam;
 
-    double minContourArea = 1500.0;
+    double minContourArea = 1500.0;//minimum area that a contour is counted as a "cone" and not useless
     @Override
     public void runOpMode()
     {
@@ -45,6 +47,7 @@ public class WebcamExample extends LinearOpMode
          * the RC phone). If no camera monitor is desired, use the alternate
          * single-parameter constructor instead (commented out below)
          */
+        //initialize webcams
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "forwardCam"), cameraMonitorViewId);
 
@@ -56,7 +59,8 @@ public class WebcamExample extends LinearOpMode
          * of a frame from the camera. Note that switching pipelines on-the-fly
          * (while a streaming session is in flight) *IS* supported.
          */
-        webcam.setPipeline(new SamplePipeline());
+
+        webcam.setPipeline(new SamplePipeline());//tell the camera which image processing pipeline to send images to
 
         /*
          * Open the connection to the camera device. New in v1.4.0 is the ability
@@ -89,7 +93,7 @@ public class WebcamExample extends LinearOpMode
                  * For a rear facing camera or a webcam, rotation is defined assuming the camera is facing
                  * away from the user.
                  */
-                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
+                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);//start getting frames from the camera
             }
 
             @Override
@@ -193,15 +197,16 @@ public class WebcamExample extends LinearOpMode
              *
              * @param width The width of the image (check your camera)
              */
-            int width = 640;
+            int width = 640;//width of each camera frame
+            int height = 480;//height of each camera frame
 
             Point textAnchor;
-            Scalar green = new Scalar(0,255,0,255);
+            Scalar green = new Scalar(0,255,0,255);//define the HSV value for green
 
             @Override
             public void init(Mat mat)
             {
-                textAnchor = new Point(20, 400);
+                textAnchor = new Point(20, 400);//define where to put the text onto each camera frame
             }
 
             @Override
@@ -216,13 +221,14 @@ public class WebcamExample extends LinearOpMode
 
                 // Make a working copy of the input matrix in HSV
                 Mat mat = new Mat();
-                Imgproc.cvtColor(input, mat, Imgproc.COLOR_RGB2HSV);
+                Imgproc.cvtColor(input, mat, Imgproc.COLOR_RGB2HSV);//convert frame from RGB 2 HSV
                 Scalar lowHSV = new Scalar(0, 0, 0); // lower bound HSV for red
                 Scalar highHSV = new Scalar(15, 255, 255); // higher bound HSV for red
                 Mat thresh = new Mat();
 
                 // We'll get a black and white image. The white regions represent the regular stones.
                 // inRange(): thresh[i][j] = {255,255,255} if mat[i][i] is within the range
+                //WE MADE A BLACK/WHITE MASK
                 Core.inRange(mat, lowHSV, highHSV, thresh);
 
 
@@ -232,18 +238,19 @@ public class WebcamExample extends LinearOpMode
 
                 List<MatOfPoint> contours = new ArrayList<>();
                 Mat hierarchy = new Mat();
-                Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+                Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);//find the contours from the MASK
                 //telemetry.addData("contours", contours);
                 //telemetry.update();
                 int largestContourArea = 0;
                 int largestContour = 0;//largestContour is the INDEX. use contours.get(largestContour) to get the contour
+                //find the largest contour, which we assume is the cone we're looking for
                 for (int i=0; i<contours.size(); i++){
                     if (Imgproc.contourArea(contours.get(i)) > largestContourArea && Imgproc.contourArea(contours.get(i)) > minContourArea){
                         largestContourArea = (int) Imgproc.contourArea(contours.get(i));
                         largestContour = i;
                     }
                 }
-                if(Imgproc.contourArea(contours.get(largestContour)) > minContourArea) {//check if the largest contour is bigger than the minimum value, so we don't find dumb contours
+                if(Imgproc.contourArea(contours.get(largestContour)) > minContourArea) {//check if the largest contour is bigger than the minimum area, so we don't find dumb contours
                     //use the largest contour's moments to find the contour center
                     Moments moments = new Moments();
                     moments = (Imgproc.moments(contours.get(largestContour)));
@@ -252,7 +259,7 @@ public class WebcamExample extends LinearOpMode
 
                     int centerColumn;
                     centerColumn = (int) Math.round((double) (moments.get_m10() / moments.get_m00()));
-
+                    //if a good contour is found, draw the contour onto the initial image, add a text line saying which camera we're looking at, and the contour's area
                     Imgproc.drawContours(input, contours, largestContour, new Scalar(0, 0, 255), 5);//draw the contour in the opposite color (blue cone --> red, red cone --> blue)
                     Imgproc.putText(input, String.format("Camera: forward cam. Area: %d", largestContourArea), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is and the contour area
                     //Mat finish = new Mat();
@@ -262,9 +269,11 @@ public class WebcamExample extends LinearOpMode
                     Imgproc.circle(input, new Point(centerColumn, centerRow), 10, new Scalar(255, 255, 0), -1);//draw yellow dot at contour center
                 }
                 else{
+                    //if no good contour is found, just add a text line saying which camera we're looking at
                     Imgproc.putText(input, String.format("Camera: forward cam."), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is if there is no contour
                 }
                 //Imgproc.cvtColor(mat, finish, Imgproc.COLOR_HSV2RGB);
+                //MUST RELEASE ALL THE MAT'S WE CREATED, TO NOT LEAK MEMORY
                 thresh.release();
                 hierarchy.release();
                 mat.release();
@@ -272,7 +281,7 @@ public class WebcamExample extends LinearOpMode
 
 
 
-
+                //return the initial image, with the text and contours added
                 return input;
 
             }

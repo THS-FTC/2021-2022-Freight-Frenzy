@@ -26,7 +26,7 @@ Point sequence
 - Servo_3 = claw tilt
 - Servo_4 = claw open/close
 */
-
+//import FTC packages and all needed libraries for opencv, vuforia, etc
 package org.firstinspires.ftc.teamcode.vision;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -53,7 +53,7 @@ import java.util.Date;
 //import com.vuforia.Vuforia;
 //import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 
-@TeleOp
+@TeleOp//set code mode to TeleOp (driver control)
 
 public class oneRed extends LinearOpMode {
     //junction height values represented as motor encoder values for 4-stage Viper Slide Kit
@@ -81,7 +81,7 @@ public class oneRed extends LinearOpMode {
     double motor_3_pwr = 0.0;
     double motor_4_pwr = 0.0;
     double motor_denom;
-    //inputs
+    //inputs from controllers
     double left_stick2_x;//triggers and bumpers
     double left_stick2_y;
     double right_stick2_x;
@@ -117,7 +117,7 @@ public class oneRed extends LinearOpMode {
         Motor_4 = hardwareMap.get(DcMotorEx.class, "Motor_4");
         armMotor = hardwareMap.get(DcMotorEx.class, "armMotor");
         intakeServo = hardwareMap.get(Servo.class, "intakeServo");//to move the claw, grab the cone.
-        //other things
+        //setting hardware directions, etc
         Motor_1.setDirection(DcMotorEx.Direction.REVERSE);
         Motor_3.setDirection(DcMotorEx.Direction.REVERSE);
         Motor_2.setDirection(DcMotorEx.Direction.FORWARD);
@@ -133,25 +133,25 @@ public class oneRed extends LinearOpMode {
         //    slideCalibrate();
         //}
         //sleep(1500);
-        armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);//reset encoder of slideMotor when slide is fully retracted
+        armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);//reset encoder of slideMotor when slide is fully retracted to encoder = 0
         sleep(50);
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         telemetry.addData("armEncoder", armMotor.getCurrentPosition());
         telemetry.addData("intake servo", intakeServo.getPosition());
         telemetry.update();
-        armMotor.setTargetPosition(0);
+        armMotor.setTargetPosition(0);//make sure the slide starts at position = 0
         armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armMotor.setVelocity(slideSpeed);
         //intakeServo.setPosition(20.0/270.0);//"zero" the intake servo
         waitForStart();
 
-        //main loop
+        //main loop. call functions that do different tasks
         while (opModeIsActive()) {
-            normal_motor();
-            intake();
-            slide();
+            normal_motor();//mecanum wheel drive
+            intake();//operate intake 180deg turns
+            slide();//operate slide up/down
             //telemetry.addData("motor1", left_stick2_y);
-            telemetry.update();
+            telemetry.update();//send telemetry data to driver hub
         }
 
     }
@@ -160,7 +160,7 @@ public class oneRed extends LinearOpMode {
 
 
 
-    void normal_motor(){//normal motor control maths + telemetry
+    void normal_motor(){//mecanum wheel motor control maths + telemetry
         right_stick2_x = this.gamepad2.right_stick_x;
         left_stick2_x = this.gamepad2.left_stick_x;
         left_stick2_y = -this.gamepad2.left_stick_y;
@@ -185,7 +185,7 @@ public class oneRed extends LinearOpMode {
         //telemetry.update();
     }
 
-    void slideCalibrate(){
+    void slideCalibrate(){//not used
         armMotor.setPower(-0.75);
         //sleep(100);
         telemetry.addData("velocity", armMotor.getVelocity(AngleUnit.DEGREES));
@@ -201,7 +201,7 @@ public class oneRed extends LinearOpMode {
         }
     }
 
-    void slide(){//team 2 arm design with claw and 2 servos
+    void slide(){//make slide move up/down using encoder values to calculate position
         left_trig2 = this.gamepad2.left_trigger;
         right_trig2 = this.gamepad2.right_trigger;
         telemetry.addData("righttrig", right_trig2);
@@ -227,7 +227,7 @@ public class oneRed extends LinearOpMode {
         //telemetry.update();
     }
 
-    void intake(){
+    void intake(){//turn the entire intake mechanism around 180 degrees
         x2 = this.gamepad2.x;
         b2 = this.gamepad2.b;
 
