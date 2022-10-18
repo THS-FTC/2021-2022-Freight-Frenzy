@@ -33,7 +33,7 @@ public class WebcamExample extends LinearOpMode
     //hardware definitions
     OpenCvWebcam webcam;
 
-    double minContourArea = 1500.0;//minimum area that a contour is counted as a "cone" and not useless
+    double minContourArea = 2500.0;//minimum area that a contour is counted as a "cone" and not useless
     @Override
     public void runOpMode()
     {
@@ -49,7 +49,7 @@ public class WebcamExample extends LinearOpMode
          */
         //initialize webcams
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "forwardCam"), cameraMonitorViewId);
+        webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "intakeCam"), cameraMonitorViewId);
 
         // OR...  Do Not Activate the Camera Monitor View
         //webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"));
@@ -201,7 +201,7 @@ public class WebcamExample extends LinearOpMode
             int height = 480;//height of each camera frame
 
             Point textAnchor;
-            Scalar green = new Scalar(0,255,0,255);//define the HSV value for green
+            Scalar green = new Scalar(0, 255, 0);//define the RGB value for green
 
             @Override
             public void init(Mat mat)
@@ -222,8 +222,10 @@ public class WebcamExample extends LinearOpMode
                 // Make a working copy of the input matrix in HSV
                 Mat mat = new Mat();
                 Imgproc.cvtColor(input, mat, Imgproc.COLOR_RGB2HSV);//convert frame from RGB 2 HSV
-                Scalar lowHSV = new Scalar(0, 0, 0); // lower bound HSV for red
-                Scalar highHSV = new Scalar(15, 255, 255); // higher bound HSV for red
+                //**IMPORTANT** - HSV color ranges (0-180, 0-255, 0-255)!!!
+                //for the HUE value, divide the 0-260 range by 2!!!
+                Scalar lowHSV = new Scalar(150, 5, 5); // lower bound HSV for red
+                Scalar highHSV = new Scalar(180, 255, 255); // higher bound HSV for red
                 Mat thresh = new Mat();
 
                 // We'll get a black and white image. The white regions represent the regular stones.
@@ -244,34 +246,40 @@ public class WebcamExample extends LinearOpMode
                 int largestContourArea = 0;
                 int largestContour = 0;//largestContour is the INDEX. use contours.get(largestContour) to get the contour
                 //find the largest contour, which we assume is the cone we're looking for
-                for (int i=0; i<contours.size(); i++){
-                    if (Imgproc.contourArea(contours.get(i)) > largestContourArea && Imgproc.contourArea(contours.get(i)) > minContourArea){
-                        largestContourArea = (int) Imgproc.contourArea(contours.get(i));
-                        largestContour = i;
+                if (contours.size() > 0) {
+                    for (int i = 0; i < contours.size(); i++) {
+                        if (Imgproc.contourArea(contours.get(i)) > largestContourArea && Imgproc.contourArea(contours.get(i)) > minContourArea) {
+                            largestContourArea = (int) Imgproc.contourArea(contours.get(i));
+                            largestContour = i;
+                        }
+                    }
+                    if (Imgproc.contourArea(contours.get(largestContour)) > minContourArea) {//check if the largest contour is bigger than the minimum area, so we don't find dumb contours
+                        //use the largest contour's moments to find the contour center
+                        Moments moments = new Moments();
+                        moments = (Imgproc.moments(contours.get(largestContour)));
+                        int centerRow;
+                        centerRow = (int) Math.round((double) (moments.get_m01() / moments.get_m00()));
+
+                        int centerColumn;
+                        centerColumn = (int) Math.round((double) (moments.get_m10() / moments.get_m00()));
+                        //if a good contour is found, draw the contour onto the initial image, add a text line saying which camera we're looking at, and the contour's area
+                        Imgproc.drawContours(input, contours, largestContour, new Scalar(0, 0, 255), 5);//draw the contour in the opposite color (blue cone --> red, red cone --> blue)
+                        Imgproc.putText(input, String.format("Camera: intake cam. Area: %d", largestContourArea), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is and the contour area
+                        //Mat finish = new Mat();
+                        //telemetry.addData("center row: ", centerRow);
+                        //telemetry.addData("center Column: ", centerColumn);
+                        //telemetry.update();
+                        Imgproc.circle(input, new Point(centerColumn, centerRow), 10, new Scalar(255, 255, 0), -1);//draw yellow dot at contour center
+                    } else {
+                        //if no good contour is found, just add a text line saying which camera we're looking at
+                        Imgproc.putText(input, String.format("Camera: intake cam."), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is if there is no contour
                     }
                 }
-                if(Imgproc.contourArea(contours.get(largestContour)) > minContourArea) {//check if the largest contour is bigger than the minimum area, so we don't find dumb contours
-                    //use the largest contour's moments to find the contour center
-                    Moments moments = new Moments();
-                    moments = (Imgproc.moments(contours.get(largestContour)));
-                    int centerRow;
-                    centerRow = (int) Math.round((double) (moments.get_m01() / moments.get_m00()));
+                else {
+                        //if no good contour is found, just add a text line saying which camera we're looking at
+                        Imgproc.putText(input, String.format("Camera: intake cam."), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is if there is no contour
+                    }
 
-                    int centerColumn;
-                    centerColumn = (int) Math.round((double) (moments.get_m10() / moments.get_m00()));
-                    //if a good contour is found, draw the contour onto the initial image, add a text line saying which camera we're looking at, and the contour's area
-                    Imgproc.drawContours(input, contours, largestContour, new Scalar(0, 0, 255), 5);//draw the contour in the opposite color (blue cone --> red, red cone --> blue)
-                    Imgproc.putText(input, String.format("Camera: forward cam. Area: %d", largestContourArea), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is and the contour area
-                    //Mat finish = new Mat();
-                    //telemetry.addData("center row: ", centerRow);
-                    //telemetry.addData("center Column: ", centerColumn);
-                    //telemetry.update();
-                    Imgproc.circle(input, new Point(centerColumn, centerRow), 10, new Scalar(255, 255, 0), -1);//draw yellow dot at contour center
-                }
-                else{
-                    //if no good contour is found, just add a text line saying which camera we're looking at
-                    Imgproc.putText(input, String.format("Camera: forward cam."), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is if there is no contour
-                }
                 //Imgproc.cvtColor(mat, finish, Imgproc.COLOR_HSV2RGB);
                 //MUST RELEASE ALL THE MAT'S WE CREATED, TO NOT LEAK MEMORY
                 thresh.release();
