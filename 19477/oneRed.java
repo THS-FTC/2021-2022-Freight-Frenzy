@@ -76,10 +76,10 @@ import java.util.Date;
 
 public class oneRed extends LinearOpMode {
     //junction height values represented as motor encoder values for 4-stage Viper Slide Kit
-    int groundJunction = 600;
-    int lowJunction = 2900;
-    int midJunction = 5400;
-    int highJunction = 5400;
+    final int groundJunction = 600;
+    final int lowJunction = 2900;
+    final int midJunction = 5400;
+    final int highJunction = 5400;
     double slideSpeed = 2250.0;//2787 PPR is max encoder PPR of Gobilda 435 rpm motor
     int armTarget = 0;//as encoder values
     int slidePosition = 0;
@@ -88,6 +88,8 @@ public class oneRed extends LinearOpMode {
     //center coordinates have TOP LEFT corner as (0,0)
     int centerColumn = 0;//"x"
     int centerRow = 0;//"y"
+    double previousTime;
+    double lastError = 0;
 
     //hardware classes + names
     Blinker Control_Hub;//NEEDED - DON'T DELETE!!
@@ -100,6 +102,8 @@ public class oneRed extends LinearOpMode {
     Servo intakeServo;
     DistanceSensor frontDistance;
     OpenCvWebcam webcam;
+    private ElapsedTime     runTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);//initialize runTime Variable with millisecond unit
+    //ALL TIMES ARE IN MILLISECONDS
 
     //motor variables for mecanum drive
     double motor_reduction = 0.4;//for drivetrain
@@ -151,11 +155,11 @@ public class oneRed extends LinearOpMode {
         Motor_2.setDirection(DcMotorEx.Direction.FORWARD);
         Motor_4.setDirection(DcMotorEx.Direction.FORWARD);
         armMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        //imu = hardwareMap.get(Gyroscope.class, "imu");
         /*Motor_1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_2.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_3.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_4.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);*/
-        //imu = hardwareMap.get(Gyroscope.class, "imu");
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);//reset encoder of slideMotor when slide is fully retracted to encoder = 0
         sleep(50);
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -370,6 +374,45 @@ public class oneRed extends LinearOpMode {
             //webcam.stopStreaming();
             //webcam.closeCameraDevice();
         //}
+    }
+
+    double computePID(double input, double setPoint, int kp, int ki, int kd){
+        double currentTime = runTime.milliseconds();//get current time in MILLISECONDS
+        double error;
+        double cumError = 0;
+        double elapsedtime;
+        double rateError;
+        elapsedtime = (currentTime - previousTime);//compute time elapsed from previous computation
+
+        error = setPoint - input;// determine error
+        cumError += error * elapsedtime;                // compute integral
+        rateError = (error - lastError)/elapsedtime;   // compute derivative
+
+        double out = kp*error + ki*cumError + kd*rateError;                //PID output
+        previousTime = currentTime;
+        lastError = error;                                //remember current error
+        previousTime = currentTime;                        //remember current time
+
+        return out;                                        //have function return the PID output
+    }
+
+    double computePD(double input, double setPoint, int kp, int kd){
+        double currentTime = runTime.milliseconds();//get current time in MILLISECONDS
+        double error;
+        double cumError = 0;
+        double elapsedtime;
+        double rateError;
+        elapsedtime = (currentTime - previousTime);//compute time elapsed from previous computation
+
+        error = setPoint - input;// determine error
+        rateError = (error - lastError)/elapsedtime;   // compute derivative
+
+        double out = kp*error + kd*rateError;                //PID output
+        previousTime = currentTime;
+        lastError = error;                                //remember current error
+        previousTime = currentTime;                        //remember current time
+
+        return out;                                        //have function return the PID output
     }
 
     //cone detection processing pipeline
