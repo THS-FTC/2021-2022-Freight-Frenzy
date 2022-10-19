@@ -62,6 +62,7 @@ import org.openftc.easyopencv.OpenCvPipeline;
 import org.openftc.easyopencv.OpenCvWebcam;
 import org.opencv.core.Core;
 import org.opencv.core.MatOfPoint;
+import org.opencv.objdetect.QRCodeDetector;
 
 
 import java.util.ArrayList;
