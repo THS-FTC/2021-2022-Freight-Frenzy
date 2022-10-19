@@ -10,16 +10,15 @@ import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
+import org.opencv.objdetect.Objdetect;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.openftc.easyopencv.OpenCvPipeline;
 import org.openftc.easyopencv.OpenCvWebcam;
-
-
 import org.opencv.core.Core;
-
 import org.opencv.core.MatOfPoint;
+import org.opencv.objdetect.QRCodeDetector;
 
 
 import java.util.ArrayList;
@@ -279,24 +278,29 @@ public class WebcamExample extends LinearOpMode
                         //if no good contour is found, just add a text line saying which camera we're looking at
                         Imgproc.putText(input, String.format("Camera: intake cam."), textAnchor, Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);//print which camera it is if there is no contour
                     }
+                Mat qrMat = new Mat();
+                Imgproc.cvtColor(input, qrMat, Imgproc.COLOR_RGB2BGR);//convert input image to BGR for QR Code detection
+                QRCodeDetector qr = new QRCodeDetector();
 
-                //Imgproc.cvtColor(mat, finish, Imgproc.COLOR_HSV2RGB);
+                Mat codes = new Mat();
+                String data = qr.detectAndDecodeCurved(qrMat, codes);
+
+                if (!codes.empty()) {
+                    telemetry.addData("Decoded data: ", data);
+                    telemetry.update();
+                }
                 //MUST RELEASE ALL THE MAT'S WE CREATED, TO NOT LEAK MEMORY
+                qrMat.release();
+                codes.release();
                 thresh.release();
                 hierarchy.release();
                 mat.release();
-                //Imgproc.cvtColor(mat, mat, Imgproc.COLOR_HSV2RGB);
-
-
-
                 //return the initial image, with the text and contours added
                 return input;
-
             }
 
         @Override
-        public void onViewportTapped()
-        {
+        public void onViewportTapped() {
             /*
              * The viewport (if one was specified in the constructor) can also be dynamically "paused"
              * and "resumed". The primary use case of this is to reduce CPU, memory, and power load
