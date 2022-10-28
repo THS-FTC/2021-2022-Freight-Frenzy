@@ -76,12 +76,22 @@ import java.util.Date;
 @TeleOp//set code mode to TeleOp (driver control)
 
 public class oneRed extends LinearOpMode {
+    //STATE MACHINE!
+    enum grabCone {
+        LOOK,
+        CENTER,
+        CHECK,
+        INTAKE,
+        DROP,
+        DEFAULT;
+    }
     //junction height values represented as motor encoder values for 4-stage Viper Slide Kit
     final int groundJunction = 600;
     final int lowJunction = 2900;
     final int midJunction = 5400;
     final int highJunction = 5400;
-    double slideSpeed = 2250.0;//2787 PPR is max encoder PPR of Gobilda 435 rpm motor
+    double slideSpeed = 2250.0;//2787 PP/S is max encoder PP/S of Gobilda 435 rpm motor
+    double driveSpeed = 2796.0;//2796 PP/S is max encoder PP/S of GoBilda 312 rpm motor
     int armTarget = 0;//as encoder values
     int slidePosition = 0;
     boolean calibrated = false;
@@ -91,6 +101,7 @@ public class oneRed extends LinearOpMode {
     int centerRow = 0;//"y"
     double previousTime;
     double lastError = 0;
+    boolean intakeWheel = false;
 
     //hardware classes + names
     Blinker Control_Hub;//NEEDED - DON'T DELETE!!
@@ -101,13 +112,14 @@ public class oneRed extends LinearOpMode {
     DcMotorEx armMotor;
     Gyroscope imu;
     Servo intakeServo;
+    CRServo wheelServo;
     DistanceSensor frontDistance;
     OpenCvWebcam webcam;
-    private ElapsedTime     runTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);//initialize runTime Variable with millisecond unit
+    private ElapsedTime runTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);//initialize runTime Variable with millisecond unit
     //ALL TIMES ARE IN MILLISECONDS
 
     //motor variables for mecanum drive
-    double motor_reduction = 0.4;//for drivetrain
+    double motor_reduction = 0.2;//for drivetrain
     double motor_1_pwr = 0.0;
     double motor_2_pwr = 0.0;
     double motor_3_pwr = 0.0;
@@ -117,13 +129,13 @@ public class oneRed extends LinearOpMode {
     double left_stick2_x;//triggers and bumpers
     double left_stick2_y;
     double right_stick2_x;
-    /*double left_stick1_y;
+    double left_stick1_y;
     boolean left_bump1;
     boolean right_bump1;
     boolean left_bump2;
     boolean right_bump2;
     double left_trig1;
-    double right_trig1;*/
+    double right_trig1;
     double left_trig2;
     double right_trig2;
     boolean a1;//a,b,x,y buttons
@@ -149,6 +161,7 @@ public class oneRed extends LinearOpMode {
         Motor_4 = hardwareMap.get(DcMotorEx.class, "Motor_4");
         armMotor = hardwareMap.get(DcMotorEx.class, "armMotor");
         intakeServo = hardwareMap.get(Servo.class, "intakeServo");//to move the claw, grab the cone.
+        wheelServo = hardwareMap.get(CRServo.class, "wheelServo");
         frontDistance = hardwareMap.get(DistanceSensor.class, "frontDistance");
         //setting hardware directions, etc
         Motor_1.setDirection(DcMotorEx.Direction.REVERSE);
@@ -157,10 +170,10 @@ public class oneRed extends LinearOpMode {
         Motor_4.setDirection(DcMotorEx.Direction.FORWARD);
         armMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         //imu = hardwareMap.get(Gyroscope.class, "imu");
-        /*Motor_1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        Motor_1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_2.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_3.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        Motor_4.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);*/
+        Motor_4.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);//reset encoder of slideMotor when slide is fully retracted to encoder = 0
         sleep(50);
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -214,11 +227,12 @@ public class oneRed extends LinearOpMode {
 
         //main loop. call functions that do different tasks
         while (opModeIsActive()) {
-            //normal_motor();//mecanum wheel drive
-            //intake();//operate intake 180deg turns
-            //slide();//operate slide up/down
+            normal_motor();//mecanum wheel drive
+            intake();//operate intake 180deg turns
+            slide();//operate slide up/down
             //cam();//camera statistics
-            centerRobotonCone();//center robot's intake on the cone's center
+            intakeWheel();
+            //centerRobotonCone();//center robot's intake on the cone's center
             telemetry.addData("center", new Scalar(centerColumn, centerRow));
             telemetry.addData("cone distance", frontDistance.getDistance(DistanceUnit.CM));
             telemetry.update();//send telemetry data to driver hub
@@ -229,7 +243,7 @@ public class oneRed extends LinearOpMode {
 
     //all custom functions
     void normal_motor(){//mecanum wheel motor control maths + telemetry
-        right_stick2_x = this.gamepad2.right_stick_x;
+        right_stick2_x = -this.gamepad2.right_stick_x;
         left_stick2_x = this.gamepad2.left_stick_x;
         left_stick2_y = -this.gamepad2.left_stick_y;
         //drivetrain
@@ -238,44 +252,26 @@ public class oneRed extends LinearOpMode {
         motor_2_pwr = (left_stick2_y - left_stick2_x - right_stick2_x)/motor_denom;//RF
         motor_3_pwr = (left_stick2_y - left_stick2_x + right_stick2_x)/motor_denom;//LB
         motor_4_pwr = (left_stick2_y + left_stick2_x - right_stick2_x)/motor_denom;//LR
-        Motor_1.setPower(motor_1_pwr  * motor_reduction);
-        Motor_2.setPower(motor_2_pwr  * motor_reduction);
-        Motor_3.setPower(motor_3_pwr  * motor_reduction);
-        Motor_4.setPower(motor_4_pwr  * motor_reduction);
-        /*telemetry.addData("motor_1", motor_1_pwr);
-        telemetry.addData("motor_2", motor_2_pwr);
-        telemetry.addData("motor_3", motor_3_pwr);
-        telemetry.addData("motor_4", motor_4_pwr);
-        telemetry.addData("encoder-left", Motor_1.getCurrentPosition());
-        telemetry.addData("encoder-mid", Motor_2.getCurrentPosition());
-        telemetry.addData("encoder-right", Motor_3.getCurrentPosition());*/
+        Motor_1.setVelocity(motor_1_pwr * driveSpeed * motor_reduction);
+        Motor_2.setVelocity(motor_2_pwr * driveSpeed * motor_reduction);
+        Motor_3.setVelocity(motor_3_pwr * driveSpeed * motor_reduction);
+        Motor_4.setVelocity(motor_4_pwr * driveSpeed * motor_reduction);
+        Motor_1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Motor_2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Motor_3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Motor_4.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
-
-    /*void slideCalibrate(){//not used
-        armMotor.setPower(-0.75);
-        //sleep(100);
-        telemetry.addData("velocity", armMotor.getVelocity(AngleUnit.DEGREES));
-        telemetry.update();
-        if (armMotor.getVelocity(AngleUnit.DEGREES) >= -0.05 && calibrated == false){
-            calibrated = true;
-            armMotor.setPower(0.0);
-        }
-        if (calibrated == true) {
-            telemetry.addData("calibrated", true);
-            telemetry.addData("armEncoder:", armMotor.getCurrentPosition());
-        }
-    }*/
 
     void slide(){//make slide move up/down using encoder values to calculate position
         left_trig2 = this.gamepad2.left_trigger;
         right_trig2 = this.gamepad2.right_trigger;
         telemetry.addData("righttrig", right_trig2);
         if(left_trig2 > 0.0 && armTarget > 0){
-            armTarget -= 20;
-            //armMotor.setTargetPosition(armTarget);
+            armTarget -= 250;
+
         }
         else if(right_trig2 > 0.0 && armTarget <= 2900){
-            armTarget += 20;
+            armTarget += 250;
             //armMotor.setTargetPosition(armTarget);
             telemetry.addData("targetpos", armMotor.getTargetPosition());
         }
@@ -283,9 +279,15 @@ public class oneRed extends LinearOpMode {
             armMotor.setPower(0.1);
         }
         else{*/
-            armMotor.setTargetPosition(armTarget);
-            armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            armMotor.setVelocity(slideSpeed);
+        armMotor.setTargetPosition(armTarget);
+        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        if(armTarget < armMotor.getCurrentPosition()){
+            armMotor.setVelocity(slideSpeed*0.4);
+        }
+        else{
+            armMotor.setVelocity(slideSpeed*0.4);
+        }
+
         //}
         telemetry.addData("armTarget: ", armTarget);
         telemetry.addData("armPos: ", armMotor.getCurrentPosition());
@@ -297,51 +299,69 @@ public class oneRed extends LinearOpMode {
         b2 = this.gamepad2.b;
 
         if (b2 && armMotor.getCurrentPosition() >= 675){//675 is predetermined as the height to clear the motors
-            intakeServo.setPosition(200.0/270.0);
+            intakeServo.setPosition(180.0/270.0);
         }
         if (x2 && armMotor.getCurrentPosition() >= 675){//675 is predetermined as the height to clear the motors
-            intakeServo.setPosition(20.0/270.0);
+            intakeServo.setPosition(30.0/270.0);
         }
         telemetry.addData("intakeServoPos: ", intakeServo.getPosition());
+    }
+
+    void intakeWheel(){
+        right_bump2 = this.gamepad2.right_bumper;
+        left_bump2 = this.gamepad2.left_bumper;
+
+        if(right_bump2){
+            wheelServo.setPower(0.25);
+        }
+        else if(left_bump2){
+            wheelServo.setPower(-0.25);
+        }
+        else{
+            wheelServo.setPower(0.0);
+        }
     }
 
     void centerRobotonCone(){
         //center width is 320
         if(centerColumn != 0) {//if it's 0, means there is no contour
             if (centerColumn < 300) {//turn left
-                Motor_1.setPower(-0.25 * motor_reduction);
-                Motor_2.setPower(0.2 * motor_reduction);
-                Motor_3.setPower(-0.25 * motor_reduction);
-                Motor_4.setPower(0.2 * motor_reduction);
+                Motor_1.setVelocity(-0.25 * motor_reduction);
+                Motor_2.setVelocity(0.25 * motor_reduction);
+                Motor_3.setVelocity(-0.25 * motor_reduction);
+                Motor_4.setVelocity(0.25 * motor_reduction);
             }
             else if (centerColumn > 340) {//turn right
-                Motor_1.setPower(0.25 * motor_reduction);
-                Motor_2.setPower(-0.2 * motor_reduction);
-                Motor_3.setPower(0.25 * motor_reduction);
-                Motor_4.setPower(-0.2 * motor_reduction);
+                Motor_1.setVelocity(0.25 * motor_reduction);
+                Motor_2.setVelocity(-0.25 * motor_reduction);
+                Motor_3.setVelocity(0.25 * motor_reduction);
+                Motor_4.setVelocity(-0.25 * motor_reduction);
             }
             else {//drive to the cone and make sure it is the right distance away, so the intake will grab it
                 if(frontDistance.getDistance(DistanceUnit.CM) > 21.5){
-                    Motor_1.setPower(0.25 * motor_reduction);
-                    Motor_2.setPower(0.25 * motor_reduction);
-                    Motor_3.setPower(0.25 * motor_reduction);
-                    Motor_4.setPower(0.25 * motor_reduction);
+                    Motor_1.setVelocity(0.25 * motor_reduction);
+                    Motor_2.setVelocity(0.25 * motor_reduction);
+                    Motor_3.setVelocity(0.25 * motor_reduction);
+                    Motor_4.setVelocity(0.25 * motor_reduction);
                 }
                 else if (frontDistance.getDistance(DistanceUnit.CM) < 14.5){
-                    Motor_1.setPower(-0.25 * motor_reduction);
-                    Motor_2.setPower(-0.25 * motor_reduction);
-                    Motor_3.setPower(-0.25 * motor_reduction);
-                    Motor_4.setPower(-0.25 * motor_reduction);
+                    Motor_1.setVelocity(-0.25 * motor_reduction);
+                    Motor_2.setVelocity(-0.25 * motor_reduction);
+                    Motor_3.setVelocity(-0.25 * motor_reduction);
+                    Motor_4.setVelocity(-0.25 * motor_reduction);
                 }
                 else{
-                    Motor_1.setPower(0.0);
-                    Motor_2.setPower(0.0);
-                    Motor_3.setPower(0.0);
-                    Motor_4.setPower(0.0);
+                    Motor_1.setVelocity(0.0);
+                    Motor_2.setVelocity(0.0);
+                    Motor_3.setVelocity(0.0);
+                    Motor_4.setVelocity(0.0);
                 }
             }
         }
-
+        Motor_1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Motor_2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Motor_3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Motor_4.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
     void cam(){
