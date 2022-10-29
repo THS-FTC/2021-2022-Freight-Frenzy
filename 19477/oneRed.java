@@ -90,10 +90,12 @@ public class oneRed extends LinearOpMode {
     final int lowJunction = 2900;
     final int midJunction = 5400;
     final int highJunction = 5400;
+    final float servoPole = 195.0F;
+    final float servoPick = 30.0F;
     double slideSpeed = 2250.0;//2787 PP/S is max encoder PP/S of Gobilda 435 rpm motor
     double driveSpeed = 2796.0;//2796 PP/S is max encoder PP/S of GoBilda 312 rpm motor
     int armTarget = 0;//as encoder values
-    int slidePosition = 0;
+    int slideClearance = 675;
     boolean calibrated = false;
     double minContourArea = 2500.0;//minimum area that a contour is counted as a "cone" and not useless
     //center coordinates have TOP LEFT corner as (0,0)
@@ -130,6 +132,8 @@ public class oneRed extends LinearOpMode {
     double left_stick2_y;
     double right_stick2_x;
     double left_stick1_y;
+    double right_stick1_x;
+    double left_stick1_x;
     boolean left_bump1;
     boolean right_bump1;
     boolean left_bump2;
@@ -182,7 +186,7 @@ public class oneRed extends LinearOpMode {
         armMotor.setTargetPosition(0);//make sure the slide starts at position = 0
         armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armMotor.setVelocity(slideSpeed);
-        //intakeServo.setPosition(20.0/270.0);//"zero" the intake servo
+        intakeServo.setPosition(servoPole/270.0);//"zero" the intake servo
 
         //initialize webcams
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
@@ -228,30 +232,65 @@ public class oneRed extends LinearOpMode {
         //main loop. call functions that do different tasks
         while (opModeIsActive()) {
             normal_motor();//mecanum wheel drive
-            intake();//operate intake 180deg turns
-            slide();//operate slide up/down
+            getCone();
             //cam();//camera statistics
             intakeWheel();
             //centerRobotonCone();//center robot's intake on the cone's center
-            telemetry.addData("center", new Scalar(centerColumn, centerRow));
-            telemetry.addData("cone distance", frontDistance.getDistance(DistanceUnit.CM));
+            //telemetry.addData("center", new Scalar(centerColumn, centerRow));
+            //telemetry.addData("cone distance", frontDistance.getDistance(DistanceUnit.CM));
+            telemetry.addData("armTarget: ", armTarget);
+            telemetry.addData("armPos: ", armMotor.getCurrentPosition());
             telemetry.update();//send telemetry data to driver hub
             //DO NOT PUT A TELEMETRY UPDATE IN ANY OTHER FUNCTION
         }
 
     }
 
+    void getCone(){
+        left_trig2 = this.gamepad2.left_trigger;
+        right_trig2 = this.gamepad2.right_trigger;
+        x2 = this.gamepad2.x;
+        b2 = this.gamepad2.b;
+
+        if (left_trig2 > 0.0 || right_trig2 > 0.0){
+            if(left_trig2 > 0.0 && armTarget > 0){
+                armTarget -= 200;
+                sleep(50);
+                slide(armTarget);
+            }
+            else if(right_trig2 > 0.0 && armTarget < 2900){
+                armTarget += 250;
+                sleep(50);
+                slide(armTarget);
+            }
+        }
+
+        if(x2){
+            intake(0);
+        }
+        else if (b2){
+            intake(1);
+        }
+    }
+
     //all custom functions
     void normal_motor(){//mecanum wheel motor control maths + telemetry
-        right_stick2_x = -this.gamepad2.right_stick_x;
-        left_stick2_x = this.gamepad2.left_stick_x;
-        left_stick2_y = -this.gamepad2.left_stick_y;
+        right_stick1_x = this.gamepad1.right_stick_x;
+        left_stick1_x = this.gamepad1.left_stick_x;
+        left_stick1_y = -this.gamepad1.left_stick_y;
+
+        if(right_bump1){
+            motor_reduction = 0.4;
+        }
+        else if(left_bump1){
+            motor_reduction = 0.2;
+        }
         //drivetrain
-        motor_denom = Math.max(Math.abs(left_stick2_y) + Math.abs(left_stick2_x) + Math.abs(right_stick2_x), 1.0);
-        motor_1_pwr = (left_stick2_y + left_stick2_x + right_stick2_x)/motor_denom;//LF
-        motor_2_pwr = (left_stick2_y - left_stick2_x - right_stick2_x)/motor_denom;//RF
-        motor_3_pwr = (left_stick2_y - left_stick2_x + right_stick2_x)/motor_denom;//LB
-        motor_4_pwr = (left_stick2_y + left_stick2_x - right_stick2_x)/motor_denom;//LR
+        motor_denom = Math.max(Math.abs(left_stick1_y) + Math.abs(left_stick1_x) + Math.abs(right_stick1_x), 1.0);
+        motor_1_pwr = (left_stick1_y + left_stick1_x + right_stick1_x)/motor_denom;//LF
+        motor_2_pwr = (left_stick1_y - left_stick1_x - right_stick1_x)/motor_denom;//RF
+        motor_3_pwr = (left_stick1_y - left_stick1_x + right_stick1_x)/motor_denom;//LB
+        motor_4_pwr = (left_stick1_y + left_stick1_x - right_stick1_x)/motor_denom;//LR
         Motor_1.setVelocity(motor_1_pwr * driveSpeed * motor_reduction);
         Motor_2.setVelocity(motor_2_pwr * driveSpeed * motor_reduction);
         Motor_3.setVelocity(motor_3_pwr * driveSpeed * motor_reduction);
@@ -262,49 +301,33 @@ public class oneRed extends LinearOpMode {
         Motor_4.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
-    void slide(){//make slide move up/down using encoder values to calculate position
-        left_trig2 = this.gamepad2.left_trigger;
-        right_trig2 = this.gamepad2.right_trigger;
-        telemetry.addData("righttrig", right_trig2);
-        if(left_trig2 > 0.0 && armTarget > 0){
-            armTarget -= 250;
-
-        }
-        else if(right_trig2 > 0.0 && armTarget <= 2900){
-            armTarget += 250;
-            //armMotor.setTargetPosition(armTarget);
-            telemetry.addData("targetpos", armMotor.getTargetPosition());
-        }
-        /*if (armMotor.getCurrentPosition() > armTarget){
-            armMotor.setPower(0.1);
-        }
-        else{*/
-        armMotor.setTargetPosition(armTarget);
+    void slide(int target){//make slide move up/down using encoder values to calculate position
+        armMotor.setTargetPosition(target);
         armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        if(armTarget < armMotor.getCurrentPosition()){
-            armMotor.setVelocity(slideSpeed*0.4);
+        if(armTarget<armMotor.getCurrentPosition()){
+            armMotor.setVelocity(slideSpeed*0.5);
         }
-        else{
-            armMotor.setVelocity(slideSpeed*0.4);
+        else if (armTarget>armMotor.getCurrentPosition()){
+            armMotor.setVelocity(slideSpeed*0.7);
         }
-
-        //}
-        telemetry.addData("armTarget: ", armTarget);
-        telemetry.addData("armPos: ", armMotor.getCurrentPosition());
-        //telemetry.update();
     }
 
-    void intake(){//turn the entire intake mechanism around 180 degrees
-        x2 = this.gamepad2.x;
-        b2 = this.gamepad2.b;
-
-        if (b2 && armMotor.getCurrentPosition() >= 675){//675 is predetermined as the height to clear the motors
-            intakeServo.setPosition(180.0/270.0);
+    void intake(int pos){//turn the entire intake mechanism around 180 degrees
+        if (armMotor.getCurrentPosition() >= slideClearance){//EVERYTHING GOOD
+            if(pos == 0){
+                intakeServo.setPosition(servoPole/270.0);
+            }
+            else if (pos == 1){
+                intakeServo.setPosition(servoPick/270.0);
+            }
+            else if (pos == 2){
+                slide(slideClearance);
+                intakeServo.setPosition(servoPole/270.0);
+            }
         }
-        if (x2 && armMotor.getCurrentPosition() >= 675){//675 is predetermined as the height to clear the motors
-            intakeServo.setPosition(30.0/270.0);
+        else if (x2 || b2){
+            slide(slideClearance + 25);
         }
-        telemetry.addData("intakeServoPos: ", intakeServo.getPosition());
     }
 
     void intakeWheel(){
