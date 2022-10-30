@@ -86,17 +86,17 @@ public class oneRed extends LinearOpMode {
         DEFAULT;
     }
     //junction height values represented as motor encoder values for 4-stage Viper Slide Kit
-    final int groundJunction = 600;
-    final int lowJunction = 2900;
-    final int midJunction = 5400;
-    final int highJunction = 5400;
+    final int pickup = 35;
+    final int groundJunction = 1025;
+    final int lowJunction = 4570;
+    final int midJunction = 7700;
+    final int highJunction = 10500;
+    final int slideClearance = 2400;
     final float servoPole = 195.0F;
     final float servoPick = 30.0F;
-    double slideSpeed = 2250.0;//2787 PP/S is max encoder PP/S of Gobilda 435 rpm motor
+    double slideSpeed = 2250.0;//2778 PP/S is max encoder PP/S of Gobilda 117 rpm motor
     double driveSpeed = 2796.0;//2796 PP/S is max encoder PP/S of GoBilda 312 rpm motor
     int armTarget = 0;//as encoder values
-    int slideClearance = 675;
-    boolean calibrated = false;
     double minContourArea = 2500.0;//minimum area that a contour is counted as a "cone" and not useless
     //center coordinates have TOP LEFT corner as (0,0)
     int centerColumn = 0;//"x"
@@ -149,11 +149,9 @@ public class oneRed extends LinearOpMode {
     boolean a2;
     boolean b2;
     boolean x2;
-    //boolean y2;
-    //boolean dpad_left;
-    //boolean dpad_down;
-    //boolean dpad_up;
-    //boolean dpad_right;
+    boolean Dleft2;
+    boolean Dright2;
+    boolean y2;
 
     @Override
     public void runOpMode() {
@@ -240,6 +238,10 @@ public class oneRed extends LinearOpMode {
             //telemetry.addData("cone distance", frontDistance.getDistance(DistanceUnit.CM));
             telemetry.addData("armTarget: ", armTarget);
             telemetry.addData("armPos: ", armMotor.getCurrentPosition());
+            telemetry.addData("motorTopLeft", Motor_1.getCurrentPosition());
+            telemetry.addData("motorTopRight", Motor_2.getCurrentPosition());
+            telemetry.addData("motorBotLeft", Motor_3.getCurrentPosition());
+            telemetry.addData("motorBotRight", Motor_4.getCurrentPosition());
             telemetry.update();//send telemetry data to driver hub
             //DO NOT PUT A TELEMETRY UPDATE IN ANY OTHER FUNCTION
         }
@@ -249,26 +251,42 @@ public class oneRed extends LinearOpMode {
     void getCone(){
         left_trig2 = this.gamepad2.left_trigger;
         right_trig2 = this.gamepad2.right_trigger;
+        Dleft2 = this.gamepad2.dpad_left;
+        Dright2 = this.gamepad2.dpad_right;
         x2 = this.gamepad2.x;
+        a2 = this.gamepad2.a;
         b2 = this.gamepad2.b;
+        y2 = this.gamepad2.y;
 
         if (left_trig2 > 0.0 || right_trig2 > 0.0){
             if(left_trig2 > 0.0 && armTarget > 0){
-                armTarget -= 200;
+                armTarget -= 30;
                 sleep(50);
                 slide(armTarget);
             }
-            else if(right_trig2 > 0.0 && armTarget < 2900){
-                armTarget += 250;
+            else if(right_trig2 > 0.0 && armTarget < 2850){
+                armTarget += 30;
                 sleep(50);
                 slide(armTarget);
             }
+        }
+        if (x2){
+            slide(pickup);
+        }
+        else if(a2){
+            slide(lowJunction);
+        }
+        else if(b2){
+            slide(midJunction);
+        }
+        else if(y2){
+            slide(highJunction);
         }
 
-        if(x2){
+        if(Dleft2){
             intake(0);
         }
-        else if (b2){
+        else if (Dright2){
             intake(1);
         }
     }
@@ -305,10 +323,10 @@ public class oneRed extends LinearOpMode {
         armMotor.setTargetPosition(target);
         armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         if(armTarget<armMotor.getCurrentPosition()){
-            armMotor.setVelocity(slideSpeed*0.5);
+            armMotor.setVelocity(slideSpeed*0.75);
         }
         else if (armTarget>armMotor.getCurrentPosition()){
-            armMotor.setVelocity(slideSpeed*0.7);
+            armMotor.setVelocity(slideSpeed*0.9);
         }
     }
 
@@ -325,7 +343,7 @@ public class oneRed extends LinearOpMode {
                 intakeServo.setPosition(servoPole/270.0);
             }
         }
-        else if (x2 || b2){
+        else if (Dleft2 || Dright2){
             slide(slideClearance + 25);
         }
     }
@@ -341,7 +359,7 @@ public class oneRed extends LinearOpMode {
             wheelServo.setPower(-0.25);
         }
         else{
-            wheelServo.setPower(0.0);
+            wheelServo.setPower(-0.05);
         }
     }
 

@@ -19,6 +19,7 @@ import org.openftc.easyopencv.OpenCvWebcam;
 import org.opencv.core.Core;
 import org.opencv.core.MatOfPoint;
 import org.opencv.objdetect.QRCodeDetector;
+import org.opencv.imgcodecs.Imgcodecs;
 
 
 import java.util.ArrayList;
@@ -282,16 +283,20 @@ public class WebcamExample extends LinearOpMode
                 Imgproc.cvtColor(input, qrMat, Imgproc.COLOR_RGB2BGR);//convert input image to BGR for QR Code detection
                 QRCodeDetector qr = new QRCodeDetector();
 
-                Mat codes = new Mat();
-                String data = qr.detectAndDecodeCurved(qrMat, codes);
+                Mat points = new Mat();
+                String data = qr.detectAndDecodeCurved(qrMat, points);
 
-                if (!codes.empty()) {
-                    telemetry.addData("Decoded data: ", data);
-                    telemetry.update();
+                for (int i = 0; i < points.cols(); i++) {
+                    Point pt1 = new Point(points.get(0, i));
+                    Point pt2 = new Point(points.get(0, (i + 1) % 4));
+                    Imgproc.line(input, pt1, pt2, new Scalar(0, 255, 0), 3);
                 }
+                //if (!points.empty()) {
+                Imgproc.putText(input, data, new Point(20, 440), Imgproc.FONT_HERSHEY_PLAIN, 2.0, green, 2);
+
                 //MUST RELEASE ALL THE MAT'S WE CREATED, TO NOT LEAK MEMORY
                 qrMat.release();
-                codes.release();
+                points.release();
                 thresh.release();
                 hierarchy.release();
                 mat.release();
