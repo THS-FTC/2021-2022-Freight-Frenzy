@@ -293,7 +293,7 @@ public class oneRed extends LinearOpMode {
 
     //all custom functions
     void normal_motor(){//mecanum wheel motor control maths + telemetry
-        right_stick1_x = this.gamepad1.right_stick_x;
+        right_stick1_x = -this.gamepad1.right_stick_x;
         left_stick1_x = this.gamepad1.left_stick_x;
         left_stick1_y = -this.gamepad1.left_stick_y;
 
@@ -309,10 +309,10 @@ public class oneRed extends LinearOpMode {
         motor_2_pwr = (left_stick1_y - left_stick1_x - right_stick1_x)/motor_denom;//RF
         motor_3_pwr = (left_stick1_y - left_stick1_x + right_stick1_x)/motor_denom;//LB
         motor_4_pwr = (left_stick1_y + left_stick1_x - right_stick1_x)/motor_denom;//LR
-        Motor_1.setVelocity(motor_1_pwr * driveSpeed * motor_reduction);
-        Motor_2.setVelocity(motor_2_pwr * driveSpeed * motor_reduction);
-        Motor_3.setVelocity(motor_3_pwr * driveSpeed * motor_reduction);
-        Motor_4.setVelocity(motor_4_pwr * driveSpeed * motor_reduction);
+        Motor_1.setVelocity(motor_1_pwr * driveSpeed * motor_reduction * -1);
+        Motor_2.setVelocity(motor_2_pwr * driveSpeed * motor_reduction * -1);
+        Motor_3.setVelocity(motor_3_pwr * driveSpeed * motor_reduction * -1);
+        Motor_4.setVelocity(motor_4_pwr * driveSpeed * motor_reduction * -1);
         Motor_1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Motor_2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Motor_3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);

@@ -43,7 +43,7 @@ import org.openftc.easyopencv.OpenCvWebcam;
 import java.util.ArrayList;
 
 @Autonomous
-public class autoRight extends LinearOpMode
+public class autoLeft extends LinearOpMode
 {
     final int highJunction = 10500;
     final int slideClearance = 2400;
@@ -156,7 +156,7 @@ public class autoRight extends LinearOpMode
                 telemetry.update();
             }
             //sleep(2000);
-            putConeRight();
+            putConeLeft();
 
             /*if(tagID == 1){
 
@@ -223,15 +223,15 @@ public class autoRight extends LinearOpMode
         sleep(20);
     }
 
-    void putConeRight(){
-        motorsRun(1275, -1275, -1275, 1275);
+    void putConeLeft(){
+        motorsRun(-1275, 1275, 1275, -1275);
         armTarget = highJunction;
         slide(highJunction);
         motorsRun(-1257, -1257, -1257, -1257);
         sleep(50);
         while(armMotor.getCurrentPosition() <= highJunction){
         }
-        motorsRun(680, -680, -680, 680);
+        motorsRun(-680, 680, 680, -680);
         intakeServo.setPosition(servoPick/270.0);
         sleep(1250);
         telemetry.addData("dist", frontDistance.getDistance(DistanceUnit.CM));
@@ -273,14 +273,14 @@ public class autoRight extends LinearOpMode
         sleep(1000);
         armTarget = 0;
         slide(armTarget);
-        if(tagID == 1){
-            motorsRun(-544, 544, 544, -544);
+        if(tagID == 1) {
+            motorsRun(2950, -2950, -2950, 2950);
         }
         else if(tagID == 2){
-            motorsRun(-1700, 1700, 1700, -1700);
+            motorsRun(1700, -1700, -1700, 1700);
         }
         else if(tagID == 3){
-            motorsRun(-2950, 2950, 2950, -2950);
+            motorsRun(544, -544, -544, 544);
         }
         while (armMotor.getCurrentPosition() != 0){
 
@@ -324,6 +324,7 @@ public class autoRight extends LinearOpMode
         }
     }
 }
+
 
 
 
