@@ -46,7 +46,7 @@ import java.util.ArrayList;
 public class autoRight extends LinearOpMode
 {
     final int highJunction = 10500;
-    final int slideClearance = 2400;
+    final int slideClearance = 3000;
     final float servoPole = 195.0F;
     final float servoPick = 30.0F;
     double slideSpeed = 2250.0;//2778 PP/S is max encoder PP/S of Gobilda 117 rpm motor
@@ -148,7 +148,7 @@ public class autoRight extends LinearOpMode
 
 
         if (opModeIsActive()) {
-            motorsRun(-135, -135, -135, -135);
+            motorsRun(-195, -195, -195, -195);
             //sleep(3000);
             while(tagID == 0){
                 detectTag();
@@ -231,12 +231,10 @@ public class autoRight extends LinearOpMode
         sleep(50);
         while(armMotor.getCurrentPosition() <= highJunction){
         }
-        motorsRun(680, -680, -680, 680);
+        motorsRun(540, -540, -540, 540);
         intakeServo.setPosition(servoPick/270.0);
-        sleep(1250);
-        telemetry.addData("dist", frontDistance.getDistance(DistanceUnit.CM));
-        telemetry.update();
-        double dist = frontDistance.getDistance(DistanceUnit.CM);
+        sleep(1500);
+        //double dist = frontDistance.getDistance(DistanceUnit.CM);
         /*while (dist > 15.0 || dist < 13.0 && dist<6000){
             if(dist < 13.0){
                 Motor_1.setVelocity(0.25 * motor_reduction);
@@ -274,13 +272,13 @@ public class autoRight extends LinearOpMode
         armTarget = 0;
         slide(armTarget);
         if(tagID == 1){
-            motorsRun(-544, 544, 544, -544);
+            motorsRun(-585, 585, 585, -585);
         }
         else if(tagID == 2){
-            motorsRun(-1700, 1700, 1700, -1700);
+            motorsRun(-1800, 1800, 1800, -1800);
         }
         else if(tagID == 3){
-            motorsRun(-2950, 2950, 2950, -2950);
+            motorsRun(-3940, 3940, 3940, -3940);
         }
         while (armMotor.getCurrentPosition() != 0){
 

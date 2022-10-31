@@ -91,7 +91,7 @@ public class oneRed extends LinearOpMode {
     final int lowJunction = 4570;
     final int midJunction = 7700;
     final int highJunction = 10500;
-    final int slideClearance = 2400;
+    final int slideClearance = 3000;
     final float servoPole = 195.0F;
     final float servoPick = 30.0F;
     double slideSpeed = 2250.0;//2778 PP/S is max encoder PP/S of Gobilda 117 rpm motor
@@ -121,7 +121,7 @@ public class oneRed extends LinearOpMode {
     //ALL TIMES ARE IN MILLISECONDS
 
     //motor variables for mecanum drive
-    double motor_reduction = 0.2;//for drivetrain
+    double motor_reduction = 0.35;//for drivetrain
     double motor_1_pwr = 0.0;
     double motor_2_pwr = 0.0;
     double motor_3_pwr = 0.0;
@@ -151,6 +151,10 @@ public class oneRed extends LinearOpMode {
     boolean x2;
     boolean Dleft2;
     boolean Dright2;
+    boolean Dup1;
+    boolean Ddown1;
+    boolean Dleft1;
+    boolean Dright1;
     boolean y2;
 
     @Override
@@ -223,6 +227,7 @@ public class oneRed extends LinearOpMode {
                  */
             }
         });
+        slide(20);
         telemetry.addData("Status", "Initialized");
         telemetry.update();
         waitForStart();
@@ -303,6 +308,7 @@ public class oneRed extends LinearOpMode {
         else if(left_bump1){
             motor_reduction = 0.2;
         }
+
         //drivetrain
         motor_denom = Math.max(Math.abs(left_stick1_y) + Math.abs(left_stick1_x) + Math.abs(right_stick1_x), 1.0);
         motor_1_pwr = (left_stick1_y + left_stick1_x + right_stick1_x)/motor_denom;//LF
@@ -359,7 +365,7 @@ public class oneRed extends LinearOpMode {
             wheelServo.setPower(-0.25);
         }
         else{
-            wheelServo.setPower(-0.05);
+            wheelServo.setPower(-0.1);
         }
     }
 
