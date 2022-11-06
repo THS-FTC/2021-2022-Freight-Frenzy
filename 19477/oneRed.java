@@ -92,8 +92,8 @@ public class oneRed extends LinearOpMode {
     final int midJunction = 7700;
     final int highJunction = 10500;
     final int slideClearance = 3000;
-    final float servoPole = 195.0F;
-    final float servoPick = 30.0F;
+    final float servoPole = 250.0F;
+    final float servoPick = 80.0F;
     double slideSpeed = 2250.0;//2778 PP/S is max encoder PP/S of Gobilda 117 rpm motor
     double driveSpeed = 2796.0;//2796 PP/S is max encoder PP/S of GoBilda 312 rpm motor
     int armTarget = 0;//as encoder values
@@ -174,7 +174,7 @@ public class oneRed extends LinearOpMode {
         Motor_3.setDirection(DcMotorEx.Direction.REVERSE);
         Motor_2.setDirection(DcMotorEx.Direction.FORWARD);
         Motor_4.setDirection(DcMotorEx.Direction.FORWARD);
-        armMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        armMotor.setDirection(DcMotorEx.Direction.REVERSE);
         //imu = hardwareMap.get(Gyroscope.class, "imu");
         Motor_1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_2.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -185,9 +185,7 @@ public class oneRed extends LinearOpMode {
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         telemetry.addData("armEncoder", armMotor.getCurrentPosition());
         telemetry.addData("intake servo", intakeServo.getPosition());
-        armMotor.setTargetPosition(0);//make sure the slide starts at position = 0
-        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        armMotor.setVelocity(slideSpeed);
+
         intakeServo.setPosition(servoPole/270.0);//"zero" the intake servo
 
         //initialize webcams
@@ -238,15 +236,7 @@ public class oneRed extends LinearOpMode {
             getCone();
             //cam();//camera statistics
             intakeWheel();
-            //centerRobotonCone();//center robot's intake on the cone's center
-            //telemetry.addData("center", new Scalar(centerColumn, centerRow));
-            //telemetry.addData("cone distance", frontDistance.getDistance(DistanceUnit.CM));
-            telemetry.addData("armTarget: ", armTarget);
-            telemetry.addData("armPos: ", armMotor.getCurrentPosition());
-            telemetry.addData("motorTopLeft", Motor_1.getCurrentPosition());
-            telemetry.addData("motorTopRight", Motor_2.getCurrentPosition());
-            telemetry.addData("motorBotLeft", Motor_3.getCurrentPosition());
-            telemetry.addData("motorBotRight", Motor_4.getCurrentPosition());
+
             telemetry.update();//send telemetry data to driver hub
             //DO NOT PUT A TELEMETRY UPDATE IN ANY OTHER FUNCTION
         }
@@ -302,23 +292,16 @@ public class oneRed extends LinearOpMode {
         left_stick1_x = this.gamepad1.left_stick_x;
         left_stick1_y = -this.gamepad1.left_stick_y;
 
-        if(right_bump1){
-            motor_reduction = 0.4;
-        }
-        else if(left_bump1){
-            motor_reduction = 0.2;
-        }
-
         //drivetrain
         motor_denom = Math.max(Math.abs(left_stick1_y) + Math.abs(left_stick1_x) + Math.abs(right_stick1_x), 1.0);
         motor_1_pwr = (left_stick1_y + left_stick1_x + right_stick1_x)/motor_denom;//LF
         motor_2_pwr = (left_stick1_y - left_stick1_x - right_stick1_x)/motor_denom;//RF
         motor_3_pwr = (left_stick1_y - left_stick1_x + right_stick1_x)/motor_denom;//LB
         motor_4_pwr = (left_stick1_y + left_stick1_x - right_stick1_x)/motor_denom;//LR
-        Motor_1.setVelocity(motor_1_pwr * driveSpeed * motor_reduction * -1);
-        Motor_2.setVelocity(motor_2_pwr * driveSpeed * motor_reduction * -1);
-        Motor_3.setVelocity(motor_3_pwr * driveSpeed * motor_reduction * -1);
-        Motor_4.setVelocity(motor_4_pwr * driveSpeed * motor_reduction * -1);
+        Motor_1.setVelocity(motor_1_pwr * driveSpeed * motor_reduction * -1.0);
+        Motor_2.setVelocity(motor_2_pwr * driveSpeed * motor_reduction * -1.0);
+        Motor_3.setVelocity(motor_3_pwr * driveSpeed * motor_reduction * -1.0);
+        Motor_4.setVelocity(motor_4_pwr * driveSpeed * motor_reduction * -1.0);
         Motor_1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Motor_2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Motor_3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -364,9 +347,9 @@ public class oneRed extends LinearOpMode {
         else if(left_bump2){
             wheelServo.setPower(-0.25);
         }
-        else{
+        /*else{
             wheelServo.setPower(-0.1);
-        }
+        }*/
     }
 
     void centerRobotonCone(){
