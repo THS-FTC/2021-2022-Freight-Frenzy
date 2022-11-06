@@ -76,7 +76,7 @@ import java.util.Date;
 @TeleOp//set code mode to TeleOp (driver control)
 
 public class oneRed extends LinearOpMode {
-    //STATE MACHINE!
+    //STATE MACHINE! (ignore for now)
     enum grabCone {
         LOOK,
         CENTER,
@@ -85,7 +85,7 @@ public class oneRed extends LinearOpMode {
         DROP,
         DEFAULT;
     }
-    //junction height values represented as motor encoder values for 4-stage Viper Slide Kit
+    //junction height values represented as motor encoder values for GoBilda 117 rpm motor
     final int pickup = 35;
     final int groundJunction = 1025;
     final int lowJunction = 4570;
@@ -98,13 +98,12 @@ public class oneRed extends LinearOpMode {
     double driveSpeed = 2796.0;//2796 PP/S is max encoder PP/S of GoBilda 312 rpm motor
     int armTarget = 0;//as encoder values
     double minContourArea = 2500.0;//minimum area that a contour is counted as a "cone" and not useless
-    //center coordinates have TOP LEFT corner as (0,0)
+    //center coordinates have TOP LEFT corner as (0,0) - used for openCv contour center
     int centerColumn = 0;//"x"
     int centerRow = 0;//"y"
+    //PID variables
     double previousTime;
     double lastError = 0;
-    boolean intakeWheel = false;
-
     //hardware classes + names
     Blinker Control_Hub;//NEEDED - DON'T DELETE!!
     DcMotorEx Motor_1;//front left
@@ -159,7 +158,7 @@ public class oneRed extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        //hardware intializing
+        //hardware initialization
         Control_Hub = hardwareMap.get(Blinker.class, "Control Hub");
         Motor_1 = hardwareMap.get(DcMotorEx.class, "Motor_1");
         Motor_2 = hardwareMap.get(DcMotorEx.class, "Motor_2");
@@ -176,6 +175,7 @@ public class oneRed extends LinearOpMode {
         Motor_4.setDirection(DcMotorEx.Direction.FORWARD);
         armMotor.setDirection(DcMotorEx.Direction.REVERSE);
         //imu = hardwareMap.get(Gyroscope.class, "imu");
+        //should reset encoder values to 0
         Motor_1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_2.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         Motor_3.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -183,9 +183,8 @@ public class oneRed extends LinearOpMode {
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);//reset encoder of slideMotor when slide is fully retracted to encoder = 0
         sleep(50);
         armMotor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        telemetry.addData("armEncoder", armMotor.getCurrentPosition());
-        telemetry.addData("intake servo", intakeServo.getPosition());
-
+        //telemetry.addData("armEncoder", armMotor.getCurrentPosition());
+        //telemetry.addData("intake servo", intakeServo.getPosition());
         intakeServo.setPosition(servoPole/270.0);//"zero" the intake servo
 
         //initialize webcams
@@ -225,24 +224,23 @@ public class oneRed extends LinearOpMode {
                  */
             }
         });
-        slide(20);
+        slide(20);//move up slightly cuz there's a weird bug somewhere
         telemetry.addData("Status", "Initialized");
         telemetry.update();
         waitForStart();
 
-        //main loop. call functions that do different tasks
+        //main loop: call functions that do different tasks
         while (opModeIsActive()) {
             normal_motor();//mecanum wheel drive
             getCone();
             //cam();//camera statistics
             intakeWheel();
-
             telemetry.update();//send telemetry data to driver hub
-            //DO NOT PUT A TELEMETRY UPDATE IN ANY OTHER FUNCTION
+            //DO NOT PUT A TELEMETRY UPDATE IN ANY OTHER FUNCTION PLEASE MAY SOMEONE HELP YOU IF YOU DO
         }
-
     }
 
+    //all custom functions
     void getCone(){
         left_trig2 = this.gamepad2.left_trigger;
         right_trig2 = this.gamepad2.right_trigger;
@@ -253,7 +251,7 @@ public class oneRed extends LinearOpMode {
         b2 = this.gamepad2.b;
         y2 = this.gamepad2.y;
 
-        if (left_trig2 > 0.0 || right_trig2 > 0.0){
+        if (left_trig2 > 0.0 || right_trig2 > 0.0){//if either left/right trigger are pressed, execute manual slide height adjustments
             if(left_trig2 > 0.0 && armTarget > 0){
                 armTarget -= 30;
                 sleep(50);
@@ -265,6 +263,7 @@ public class oneRed extends LinearOpMode {
                 slide(armTarget);
             }
         }
+        //execute preset slide heights if the buttons are pressed
         if (x2){
             slide(pickup);
         }
@@ -277,7 +276,7 @@ public class oneRed extends LinearOpMode {
         else if(y2){
             slide(highJunction);
         }
-
+        //turn the intake servo 180 deg
         if(Dleft2){
             intake(0);
         }
@@ -286,13 +285,12 @@ public class oneRed extends LinearOpMode {
         }
     }
 
-    //all custom functions
     void normal_motor(){//mecanum wheel motor control maths + telemetry
         right_stick1_x = -this.gamepad1.right_stick_x;
         left_stick1_x = this.gamepad1.left_stick_x;
         left_stick1_y = -this.gamepad1.left_stick_y;
 
-        //drivetrain
+        //drivetrain (somewhere you can learn more about the math to control the mecanum wheels - GOOGLE IT!)
         motor_denom = Math.max(Math.abs(left_stick1_y) + Math.abs(left_stick1_x) + Math.abs(right_stick1_x), 1.0);
         motor_1_pwr = (left_stick1_y + left_stick1_x + right_stick1_x)/motor_denom;//LF
         motor_2_pwr = (left_stick1_y - left_stick1_x - right_stick1_x)/motor_denom;//RF
@@ -337,7 +335,7 @@ public class oneRed extends LinearOpMode {
         }
     }
 
-    void intakeWheel(){
+    void intakeWheel(){//turn gecko wheels to pick/drop cone
         right_bump2 = this.gamepad2.right_bumper;
         left_bump2 = this.gamepad2.left_bumper;
 
@@ -351,6 +349,7 @@ public class oneRed extends LinearOpMode {
             wheelServo.setPower(-0.1);
         }*/
     }
+    //below is some stuff i'm expirementing with
 
     void centerRobotonCone(){
         //center width is 320
