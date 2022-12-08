@@ -201,7 +201,7 @@ public class justPark extends LinearOpMode
         }
     }
 
-    void detectTag(){
+    void detectTag(){//the following is to read/detect the AprilTags. Please Google what they are if you're not familiar. I'm too lazy to explain.
         // Calling getDetectionsUpdate() will only return an object if there was a new frame
         // processed since the last time we called it. Otherwise, it will return null. This
         // enables us to only run logic when there has been a new frame, as opposed to the
@@ -271,68 +271,9 @@ public class justPark extends LinearOpMode
         sleep(20);
     }
 
-    void putConeRight(){
-        motorsRun(1275, -1275, -1275, 1275);
-
-        motorsRun(-1257, -1257, -1257, -1257);
-        sleep(50);
-        //while(armMotor.getCurrentPosition() <= highJunction){
-        //}
-        motorsRun(540, -540, -540, 540);
-        //intakeServo.setPosition(servoPick/270.0);
-        //sleep(1500);
-        //double dist = frontDistance.getDistance(DistanceUnit.CM);
-        /*while (dist > 15.0 || dist < 13.0 && dist<6000){
-            if(dist < 13.0){
-                Motor_1.setVelocity(0.25 * motor_reduction);
-                Motor_2.setVelocity(0.25 * motor_reduction);
-                Motor_3.setVelocity(0.25 * motor_reduction);
-                Motor_4.setVelocity(0.25 * motor_reduction);
-            }
-            else if (dist > 15.0){
-                Motor_1.setVelocity(-0.25 * motor_reduction);
-                Motor_2.setVelocity(-0.25 * motor_reduction);
-                Motor_3.setVelocity(-0.25 * motor_reduction);
-                Motor_4.setVelocity(-0.25 * motor_reduction);
-            }
-            else{
-                Motor_1.setVelocity(0.0);
-                Motor_2.setVelocity(0.0);
-                Motor_3.setVelocity(0.0);
-                Motor_4.setVelocity(0.0);
-            }
-            Motor_1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            Motor_2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            Motor_3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            Motor_4.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        }*/
-        /*wheelServo.setPower(1.0);
-        sleep(1000);
-        wheelServo.setPower(0.0);*/
-        parkRight();
-    }
-
-    void parkRight(){
-        //intakeServo.setPosition(servoPole/270.0);
-        //sleep(1000);
-        //armTarget = 0;
-        //slide(armTarget);
-        if(tagID == 1){
-            motorsRun(-585, 585, 585, -585);
-        }
-        else if(tagID == 2){
-            motorsRun(-1800, 1800, 1800, -1800);
-        }
-        else if(tagID == 3){
-            motorsRun(-3940, 3940, 3940, -3940);
-        }
-        /*while (armMotor.getCurrentPosition() != 0){
-
-        }*/
-    }
-
-    void motorsRun(int a, int b, int c, int d){
+    void motorsRun(int a, int b, int c, int d){//operate the 4 drive motors with 4 inputs, one for each motor
+        //input sequence: motor 1, motor 2...etc
+        //TL - 1; TR - 2; BL - 3; BR - 4;
         Motor_1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         Motor_2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         Motor_3.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -352,26 +293,13 @@ public class justPark extends LinearOpMode
         sleep(calcSleep(Math.abs(a)));
     }
 
-    long calcSleep(int PPRdistance){
+    long calcSleep(int PPRdistance){//calculate how long to make the computer sleep to give the motors time to reach their position
+        //IK there's a better way to do this but I haven't bothered trying yet.
         telemetry.addData("sleep", Math.round((PPRdistance/(driveSpeed*motor_reduction)*1000)+1000));
         telemetry.update();
         return (Math.round((PPRdistance/(driveSpeed*motor_reduction)*1000)+1000));
     }
 
-    /*void slide(int target){//make slide move up/down using encoder values to calculate position
-        armMotor.setTargetPosition(target);
-        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        if(armTarget<armMotor.getCurrentPosition()){
-            armMotor.setVelocity(slideSpeed*0.75);
-        }
-        else if (armTarget>armMotor.getCurrentPosition()){
-            armMotor.setVelocity(slideSpeed);
-        }
-    }*/
-
-    void justPark(){
-
-    }
 }
 
 
